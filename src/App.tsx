@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { Link, Routes, Route, useLocation, useParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import type { LucideIcon } from 'lucide-react'
 import {
   ArrowRight, Award, Check,
-  ChevronDown, CircleCheck, Globe2, GraduationCap,
+  Building2, CalendarDays, ChevronDown, CircleCheck, Globe2, GraduationCap,
   Luggage, MapPin, Menu, MessageCircle,
   Plane, Quote, ShieldCheck, Smartphone, Star, TrainFront, Users,
   WalletCards, X, CarFront, Compass, Clock3, Phone, Mail
@@ -13,10 +14,231 @@ import { redirectToWhatsApp } from './utils/whatsapp'
 import { packageInclusions, tourPackages } from './data/tourPackages'
 import { blogPosts } from './data/blogPosts'
 import {
-  bookingFieldDefinitions, bookingTypes, type BookingFieldDefinition, type BookingType,
+  bookingFieldDefinitions, bookingTypes, internationalDestinationOptions,
+  type BookingFieldDefinition, type BookingType,
 } from './data/bookingOptions'
 
 type DrawerState = { open: boolean; summary: string }
+
+const plannerFieldIcons: Record<string, LucideIcon> = {
+  'Holiday type': Compass,
+  Destination: MapPin,
+  'Travel month': CalendarDays,
+  'Travel Date': CalendarDays,
+  Travelers: Users,
+  'Trip type': CarFront,
+  'Pickup city': MapPin,
+  Vehicle: CarFront,
+  'Cab travel date': CalendarDays,
+  Passengers: Users,
+  Service: GraduationCap,
+  Country: MapPin,
+  Level: GraduationCap,
+  Intake: CalendarDays,
+  Timeline: Clock3,
+  'Booking Type': Plane,
+  'From Airport': Plane,
+  'To Airport': MapPin,
+  'Destination Country': Globe2,
+  'From Station': TrainFront,
+  'To Station': TrainFront,
+  'Hotel City': Building2,
+  'Check-in Date': CalendarDays,
+  'Nights / Check-out': CalendarDays,
+  'Guests / Rooms': Users,
+}
+
+function PlannerSelect({
+  id, value, options, onChange, placeholder, icon: Icon, searchable = false, allowCustom = false,
+}: {
+  id: string
+  value: string
+  options: readonly string[]
+  onChange: (value: string) => void
+  placeholder: string
+  icon: LucideIcon
+  searchable?: boolean
+  allowCustom?: boolean
+}) {
+  const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const [activeIndex, setActiveIndex] = useState(-1)
+  const rootRef = useRef<HTMLDivElement | null>(null)
+  const inputRef = useRef<HTMLInputElement | null>(null)
+  const listId = useId()
+  const filteredOptions = searchable
+    ? options.filter(option => option.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()))
+    : options
+  const hasExactMatch = options.some(option => option.toLocaleLowerCase() === query.trim().toLocaleLowerCase())
+  const showCustomOption = searchable && allowCustom && Boolean(query.trim()) && !hasExactMatch
+  const optionCount = filteredOptions.length + (showCustomOption ? 1 : 0)
+
+  const close = () => {
+    setOpen(false)
+    setQuery('')
+    setActiveIndex(-1)
+  }
+
+  useEffect(() => {
+    if (!open) return
+    const handlePointerDown = (event: PointerEvent) => {
+      if (rootRef.current && event.target instanceof Node && !rootRef.current.contains(event.target)) {
+        if (searchable && allowCustom && query.trim()) onChange(query.trim())
+        close()
+      }
+    }
+    document.addEventListener('pointerdown', handlePointerDown)
+    return () => document.removeEventListener('pointerdown', handlePointerDown)
+  }, [open, searchable, allowCustom, query, onChange])
+
+  const choose = (option: string) => {
+    onChange(option)
+    close()
+    inputRef.current?.blur()
+  }
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault()
+      if (!open) {
+        setOpen(true)
+        return
+      }
+      if (optionCount > 0) {
+        const direction = event.key === 'ArrowDown' ? 1 : -1
+        setActiveIndex(index => {
+          if (index < 0) return direction === 1 ? 0 : optionCount - 1
+          return (index + direction + optionCount) % optionCount
+        })
+      }
+    } else if (event.key === 'Enter' && open) {
+      event.preventDefault()
+      if (activeIndex < 0) {
+        if (filteredOptions.length > 0) choose(filteredOptions[0])
+        else if (showCustomOption) choose(query.trim())
+      } else if (showCustomOption && activeIndex === filteredOptions.length) {
+        choose(query.trim())
+      } else if (filteredOptions.length > 0) {
+        choose(filteredOptions[Math.min(activeIndex, filteredOptions.length - 1)])
+      }
+    } else if (event.key === 'Escape' && open) {
+      event.preventDefault()
+      close()
+    } else if (event.key === 'Tab' && open) {
+      if (searchable && allowCustom && query.trim()) onChange(query.trim())
+      close()
+    }
+  }
+
+  const shownValue = open && searchable ? query : value
+
+  return (
+    <div className="planner-select" ref={rootRef}>
+      <Icon className="planner-select-icon" size={16} aria-hidden="true" />
+      <input
+        ref={inputRef}
+        id={id}
+        className="planner-select-input"
+        type="text"
+        value={shownValue}
+        placeholder={open && searchable ? 'Type to search...' : placeholder}
+        readOnly={!searchable}
+        autoComplete="off"
+        role="combobox"
+        aria-autocomplete={searchable ? 'list' : 'none'}
+        aria-expanded={open}
+        aria-controls={listId}
+        aria-activedescendant={open && activeIndex >= 0 && optionCount > 0 ? `${listId}-option-${activeIndex}` : undefined}
+        onFocus={() => {
+          if (searchable) {
+            setOpen(true)
+            setQuery('')
+            setActiveIndex(-1)
+          }
+        }}
+        onClick={() => {
+          if (searchable) setOpen(true)
+          else setOpen(current => !current)
+        }}
+        onChange={event => {
+          setQuery(event.target.value)
+          setActiveIndex(-1)
+          setOpen(true)
+        }}
+        onKeyDown={handleKeyDown}
+      />
+      <ChevronDown className={`planner-select-chevron${open ? ' open' : ''}`} size={16} aria-hidden="true" />
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            className="planner-select-menu"
+            id={listId}
+            role="listbox"
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.14 }}
+          >
+            {filteredOptions.map((option, index) => (
+              <button
+                type="button"
+                id={`${listId}-option-${index}`}
+                className={`planner-select-option${activeIndex === index ? ' active' : ''}`}
+                role="option"
+                aria-selected={value === option}
+                key={option}
+                onMouseEnter={() => setActiveIndex(index)}
+                onMouseDown={event => event.preventDefault()}
+                onClick={() => choose(option)}
+              >
+                <span>{option}</span>
+                {value === option && <Check size={16} aria-hidden="true" />}
+              </button>
+            ))}
+            {showCustomOption && (
+              <button
+                type="button"
+                id={`${listId}-option-${filteredOptions.length}`}
+                className={`planner-select-option${activeIndex === filteredOptions.length ? ' active' : ''}`}
+                role="option"
+                aria-selected={false}
+                onMouseEnter={() => setActiveIndex(filteredOptions.length)}
+                onMouseDown={event => event.preventDefault()}
+                onClick={() => choose(query.trim())}
+              >
+                <span>Use “{query.trim()}”</span>
+              </button>
+            )}
+            {optionCount === 0 && <div className="planner-select-empty">No matching options</div>}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+function PlannerField({
+  fieldKey, label, value, options, onChange, placeholder = 'Select', searchable = false, allowCustom = false, icon,
+}: {
+  fieldKey: string
+  label: string
+  value: string
+  options: readonly string[]
+  onChange: (value: string) => void
+  placeholder?: string
+  searchable?: boolean
+  allowCustom?: boolean
+  icon?: LucideIcon
+}) {
+  const id = useId()
+  const Icon = icon ?? plannerFieldIcons[fieldKey] ?? Compass
+  return (
+    <div className="planner-field">
+      <label htmlFor={id}>{label}</label>
+      <PlannerSelect id={id} value={value} options={options} onChange={onChange} placeholder={placeholder} icon={Icon} searchable={searchable} allowCustom={allowCustom} />
+    </div>
+  )
+}
 
 function imageSource(filename: string) {
   return `${import.meta.env.BASE_URL}images/${filename}`
@@ -49,32 +271,44 @@ function getBookingValidationError(type: BookingType, values: Record<string, str
 }
 
 function BookingFields({
-  type, values, setValue, variant,
+  type, fields, values, setValue, variant,
 }: {
   type: BookingType
+  fields?: readonly BookingFieldDefinition[]
   values: Record<string, string>
   setValue: (key: string, value: string) => void
   variant: 'planner' | 'page'
 }) {
+  const visibleFields = fields ?? bookingFieldDefinitions[type]
   return (
     <>
-      {bookingFieldDefinitions[type].map((field: BookingFieldDefinition) => {
-        const className = variant === 'planner' ? 'planner-field' : undefined
+      {visibleFields.map((field: BookingFieldDefinition) => {
         const value = values[field.key] ?? field.defaultValue ?? ''
-        const isQuickDate = variant === 'planner' && field.control === 'date'
-        const isSelect = field.control === 'select' || isQuickDate
         const options = field.options ?? []
+        if (variant === 'planner') {
+          return (
+            <PlannerField
+              key={field.key}
+              fieldKey={field.key}
+              label={field.label}
+              value={value}
+              options={options}
+              onChange={nextValue => setValue(field.key, nextValue)}
+              placeholder={field.placeholder ?? 'Select'}
+              searchable={field.control === 'suggestion'}
+              allowCustom={field.control === 'suggestion'}
+            />
+          )
+        }
+        const isSelect = field.control === 'select'
         return (
-          <label className={className} key={field.key}>
+          <label key={field.key}>
             <span>{field.label}</span>
             {isSelect ? (
-              <>
-                <select required={field.required} value={value} onChange={event => setValue(field.key, event.target.value)}>
-                  <option value="">Select</option>
-                  {options.map(option => <option key={option}>{option}</option>)}
-                </select>
-                {variant === 'planner' && <ChevronDown size={15} />}
-              </>
+              <select required={field.required} value={value} onChange={event => setValue(field.key, event.target.value)}>
+                <option value="">Select</option>
+                {options.map(option => <option key={option}>{option}</option>)}
+              </select>
             ) : (
               <>
                 <input
@@ -247,9 +481,9 @@ function Navbar({ openDrawer }: { openDrawer: (summary?: string) => void }) {
 
 function Planner({ openDrawer: _openDrawer }: { openDrawer: (summary: string) => void }) {
   const tabs = [
-    { name: 'Tours', icon: Compass, action: 'Get Quote', fields: ['Holiday type', 'Travel month', 'Travelers', 'Budget'] },
-    { name: 'Cab & Fleet', icon: CarFront, action: 'Book Cab', fields: ['Trip type', 'Pickup city', 'Vehicle', 'Cab travel date'] },
-    { name: 'Study Abroad', icon: GraduationCap, action: 'Get Free Counselling', fields: ['Service', 'Country', 'Level', 'Timeline'] },
+    { name: 'Tours', icon: Compass, action: 'Get Quote', fields: ['Holiday type', 'Destination', 'Travel month', 'Travel Date', 'Travelers'] },
+    { name: 'Cab & Fleet', icon: CarFront, action: 'Book Cab', fields: ['Trip type', 'Pickup city', 'Vehicle', 'Cab travel date', 'Passengers'] },
+    { name: 'Study Abroad', icon: GraduationCap, action: 'Get Free Counselling', fields: ['Service', 'Country', 'Level', 'Intake', 'Timeline'] },
     { name: 'Bookings', icon: Plane, action: 'Check Availability', fields: [] },
   ]
   const [tab, setTab] = useState(0)
@@ -260,6 +494,7 @@ function Planner({ openDrawer: _openDrawer }: { openDrawer: (summary: string) =>
     setBookingError('')
   }
   const bookingType = bookingTypes.find(type => type === values['Booking Type']) ?? 'Domestic Flight'
+  const studyCountries = [...internationalDestinationOptions, 'Europe', 'Other']
   const submit = () => {
     if (tab === 3) {
       const error = getBookingValidationError(bookingType, values)
@@ -276,45 +511,87 @@ function Planner({ openDrawer: _openDrawer }: { openDrawer: (summary: string) =>
     }, {})
     redirectToWhatsApp(tabs[tab].name, activeValues)
   }
-  const field = (key: string, label: string, options: string[]) => (
-    <label className="planner-field"><span>{label}</span><select value={values[key] || ''} onChange={e => set(key, e.target.value)}>
-      <option value="">Select</option>{options.map(o => <option key={o}>{o}</option>)}
-    </select><ChevronDown size={15} /></label>
+  const field = (
+    key: string,
+    label: string,
+    options: readonly string[],
+    searchable = false,
+    allowCustom = false,
+  ) => (
+    <PlannerField
+      key={key}
+      fieldKey={key}
+      label={label}
+      value={values[key] || ''}
+      options={options}
+      onChange={value => set(key, value)}
+      searchable={searchable}
+      allowCustom={allowCustom}
+      icon={key === 'Booking Type'
+        ? bookingType === 'Hotel Reservation' ? Building2 : bookingType === 'IRCTC Train Reservation' ? TrainFront : Plane
+        : undefined}
+    />
+  )
+  const destinationField = (
+    <PlannerField
+      key="Destination"
+      fieldKey="Destination"
+      label="Destination"
+      value={values.Destination || ''}
+      options={tourPackages.map(item => item.name)}
+      onChange={value => set('Destination', value)}
+      searchable
+      allowCustom
+    />
   )
   return (
     <div className="planner">
       <div className="planner-tabs" role="tablist">
-      {tabs.map((t, i) => <button role="tab" aria-selected={tab === i} key={t.name} className={tab === i ? 'active' : ''} onClick={() => { setTab(i); setBookingError('') }}>
+        {tabs.map((t, i) => <button role="tab" aria-selected={tab === i} key={t.name} className={tab === i ? 'active' : ''} onClick={() => { setTab(i); setBookingError('') }}>
           <t.icon size={17} /> {t.name}
         </button>)}
       </div>
-      <div className={tab === 3 ? 'planner-fields planner-fields-bookings' : 'planner-fields'}>
-        {tab === 0 && <>
-          {field('Holiday type', 'Holiday type', ['Domestic Holiday', 'International Holiday', 'Weekend Getaway', 'Honeymoon', 'Family', 'Pilgrimage', 'Corporate Group'])}
-          {field('Travel month', 'Travel month', ['December', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November'])}
-          {field('Travelers', 'Travelers', ['1 Person', '2 People', 'Family', '5–10 People', '11+ People'])}
-          {field('Budget', 'Budget tier', ['Essential', 'Premium', 'Luxury'])}
-        </>}
-        {tab === 1 && <>
-          {field('Trip type', 'Trip type', ['Airport Transfer', 'Local', 'Outstation', 'Corporate Employee Transport'])}
-          {field('Pickup city', 'Pickup city', ['Hyderabad', 'Secunderabad', 'Bangalore', 'Vijayawada'])}
-          {field('Vehicle', 'Vehicle type', ['Sedan', 'SUV / Innova', 'Tempo Traveller', 'Bus'])}
-          {field('Cab travel date', 'Travel date', ['Today', 'Tomorrow', 'This week', 'Next week', 'Custom date'])}
-        </>}
-        {tab === 2 && <>
-          {field('Service', 'Service', ['Study Abroad Guidance', 'Student Visa', 'Tourist / Visitor Visa', 'Work Visa', 'Document & Application Support'])}
-          {field('Country', 'Target country', ['United States', 'United Kingdom', 'Canada', 'Australia', 'Germany', 'Europe', 'Other'])}
-          {field('Level', 'Study level', ['Undergraduate', 'Postgraduate', 'PhD', 'Diploma', 'Not sure yet'])}
-          {field('Timeline', 'Preferred timeline', ['Within 3 months', '3–6 months', '6–12 months', 'Just exploring'])}
-        </>}
-        {tab === 3 && <>
-          {field('Booking Type', 'Booking type', [...bookingTypes])}
-          <BookingFields type={bookingType} values={values} setValue={set} variant="planner" />
-        </>}
+      <div className="planner-fields">
+        <div className="planner-primary-fields">
+          {tab === 0 && <>
+            {field('Holiday type', 'Holiday type', ['Domestic Holiday', 'International Holiday', 'Weekend Getaway', 'Honeymoon', 'Family', 'Pilgrimage', 'Corporate Group'])}
+            {destinationField}
+            {field('Travel month', 'Travel month', ['December', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November'])}
+          </>}
+          {tab === 1 && <>
+            {field('Trip type', 'Trip type', ['Airport Transfer', 'Local', 'Outstation', 'Corporate Employee Transport'])}
+            {field('Pickup city', 'Pickup city', ['Hyderabad', 'Secunderabad', 'Bengaluru', 'Vijayawada'])}
+            {field('Vehicle', 'Vehicle type', ['Sedan', 'SUV / Innova', 'Tempo Traveller', 'Bus'])}
+          </>}
+          {tab === 2 && <>
+            {field('Service', 'Service', ['Study Abroad Guidance', 'Student Visa', 'Tourist / Visitor Visa', 'Work Visa', 'Document & Application Support'])}
+            {field('Country', 'Preferred country', studyCountries, true, true)}
+            {field('Level', 'Study level', ['Undergraduate', 'Postgraduate', 'PhD', 'Diploma', 'Not sure yet'])}
+          </>}
+          {tab === 3 && <>
+            {field('Booking Type', 'Booking type', [...bookingTypes])}
+            <BookingFields type={bookingType} fields={bookingFieldDefinitions[bookingType].slice(0, 2)} values={values} setValue={set} variant="planner" />
+          </>}
+        </div>
+        <div className="planner-secondary-fields">
+          {tab === 0 && <>
+            {field('Travel Date', 'Travel date', ['Today', 'Tomorrow', 'This week', 'Next month'])}
+            {field('Travelers', 'Travelers', ['1 Person', '2 People', 'Family', '5–10 People', '11+ People'])}
+          </>}
+          {tab === 1 && <>
+            {field('Cab travel date', 'Travel date', ['Today', 'Tomorrow', 'This week', 'Next week', 'Custom date'])}
+            {field('Passengers', 'Passengers', ['1–4 People', '5–7 People', '8–17 People', '18+ People'])}
+          </>}
+          {tab === 2 && <>
+            {field('Intake', 'Preferred intake', ['January 2027', 'May 2027', 'September 2027', 'Flexible'])}
+            {field('Timeline', 'Preferred timeline', ['Within 3 months', '3–6 months', '6–12 months', 'Just exploring'])}
+          </>}
+          {tab === 3 && <BookingFields type={bookingType} fields={bookingFieldDefinitions[bookingType].slice(2)} values={values} setValue={set} variant="planner" />}
+          <button type="button" className="planner-submit" onClick={submit} aria-label={tabs[tab].action}>
+            {tabs[tab].action} <ArrowRight size={18} />
+          </button>
+        </div>
         {tab === 3 && bookingError && <p className="planner-error" role="alert">{bookingError}</p>}
-        <button type="button" className="planner-submit" onClick={submit} aria-label={tab === 0 ? 'Get Quote - Enquire on WhatsApp' : tabs[tab].action}>
-          {tabs[tab].action} {tab === 0 ? <MessageCircle size={18} /> : <ArrowRight size={18} />}
-        </button>
       </div>
     </div>
   )
