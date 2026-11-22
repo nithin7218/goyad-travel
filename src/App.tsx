@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, Routes, Route, useLocation } from 'react-router-dom'
+import { Link, Routes, Route, useLocation, useParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   ArrowRight, Award, Check,
@@ -9,12 +9,24 @@ import {
   WalletCards, X, CarFront, Compass, Clock3, Phone, Mail
 } from 'lucide-react'
 import './App.css'
-import { redirectToWhatsApp, GOYAD_WHATSAPP_NUMBER } from './utils/whatsapp'
+import { redirectToWhatsApp } from './utils/whatsapp'
+import { packageInclusions, tourPackages } from './data/tourPackages'
+import { blogPosts } from './data/blogPosts'
 
 type DrawerState = { open: boolean; summary: string }
 
-const whatsapp = (message = 'Hi Goyad Travel! I would like a free quote.') =>
-  `https://wa.me/${GOYAD_WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`
+function imageSource(filename: string) {
+  return `${import.meta.env.BASE_URL}images/${filename}`
+}
+
+function handleImageError(event: React.SyntheticEvent<HTMLImageElement>) {
+  const image = event.currentTarget
+  image.parentElement?.classList.add('image-fallback')
+  if (image.dataset.fallbackApplied !== 'true') {
+    image.dataset.fallbackApplied = 'true'
+    image.src = imageSource('fallback-travel.svg')
+  }
+}
 
 function Navbar({ openDrawer }: { openDrawer: (summary?: string) => void }) {
   const [menuOpen, setMenuOpen] = useState(false)
@@ -78,7 +90,7 @@ function Navbar({ openDrawer }: { openDrawer: (summary?: string) => void }) {
     <header className="navbar" ref={navRoot}>
       <div className="nav-inner">
         <Link className="brand" to="/" onClick={() => setMenuOpen(false)} aria-label="GOYAD Travel Home">
-          <span className="brand-logo"><img src={`${import.meta.env.BASE_URL}logo2.png`} alt="GOYAD Travel" /></span>
+          <span className="brand-logo"><img src={`${import.meta.env.BASE_URL}logo2.png`} alt="GOYAD Travel" onError={handleImageError} /></span>
         </Link>
         <nav className={menuOpen ? 'nav-links open' : 'nav-links'} aria-label="Main navigation">
           <Link
@@ -148,14 +160,14 @@ function Navbar({ openDrawer }: { openDrawer: (summary?: string) => void }) {
           >
             Contact
           </Link>
-          <a className="mobile-whatsapp-cta" href={whatsapp()} target="_blank" rel="noreferrer" onClick={() => setMenuOpen(false)}>
-            <MessageCircle size={18} /> Chat on WhatsApp
-          </a>
+          <button className="mobile-whatsapp-cta" type="button" onClick={() => { setMenuOpen(false); openDrawer() }}>
+            <MessageCircle size={18} /> Get a Free Quote
+          </button>
         </nav>
         <div className="nav-actions">
-          <a className="whatsapp-icon" href={whatsapp()} target="_blank" rel="noreferrer" aria-label="Chat on WhatsApp">
+          <button className="whatsapp-icon" type="button" onClick={() => openDrawer()} aria-label="Get a free quote">
             <MessageCircle size={20} />
-          </a>
+          </button>
           <button className="nav-cta" onClick={() => openDrawer()}>Get a Free Quote <ArrowRight size={16} /></button>
           <button className="menu-btn" onClick={() => setMenuOpen(!menuOpen)} aria-label="Toggle menu" aria-expanded={menuOpen}>
             {menuOpen ? <X /> : <Menu />}
@@ -170,7 +182,7 @@ function Planner({ openDrawer: _openDrawer }: { openDrawer: (summary: string) =>
   const tabs = [
     { name: 'Tours', icon: Compass, action: 'Get Quote', fields: ['Holiday type', 'Travel month', 'Travelers', 'Budget'] },
     { name: 'Cab & Fleet', icon: CarFront, action: 'Book Cab', fields: ['Trip type', 'Pickup city', 'Vehicle', 'Cab travel date'] },
-    { name: 'Study Abroad', icon: GraduationCap, action: 'Get Guidance', fields: ['Service', 'Country', 'Level', 'Timeline'] },
+    { name: 'Study Abroad', icon: GraduationCap, action: 'Get Free Counselling', fields: ['Service', 'Country', 'Level', 'Timeline'] },
     { name: 'Bookings', icon: Plane, action: 'Check Availability', fields: ['Booking', 'Route', 'Booking travel date', 'Passengers'] },
   ]
   const [tab, setTab] = useState(0)
@@ -231,7 +243,7 @@ function Planner({ openDrawer: _openDrawer }: { openDrawer: (summary: string) =>
 function Hero({ openDrawer: _openDrawer }: { openDrawer: (summary: string) => void }) {
   return (
     <section className="hero-section">
-      <div className="hero-bg" />
+      <div className="hero-bg"><img src={imageSource('hero-travel.jpg')} alt="" onError={handleImageError} /></div>
       <div className="hero-overlay" />
       <div className="container hero-content">
         <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .7 }}>
@@ -247,10 +259,10 @@ function Hero({ openDrawer: _openDrawer }: { openDrawer: (summary: string) => vo
 
 function ServicesBento({ openDrawer: _openDrawer }: { openDrawer: (summary: string) => void }) {
   const cards = [
-    { id: 'tours', title: 'Domestic & International Tours', text: 'Thoughtfully planned holidays, pilgrimages, honeymoons and group journeys.', icon: Globe2, image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=85', className: 'service-large' },
-    { id: 'fleet', title: 'Corporate & Travel Cabs', text: 'Airport, local, outstation and employee transport across Hyderabad.', icon: CarFront, image: 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&w=900&q=85', className: '' },
-    { id: 'study', title: 'Study Abroad & Visas', text: 'Clear guidance, application support and pre-departure assistance.', icon: GraduationCap, image: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=900&q=85', className: '' },
-    { id: 'services', title: 'Flights, Hotels & IRCTC', text: 'Essential bookings for domestic and international journeys.', icon: Plane, image: 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=1200&q=85', className: 'service-wide' },
+    { id: 'tours', title: 'Domestic & International Tours', text: 'Thoughtfully planned holidays, pilgrimages, honeymoons and group journeys.', path: '/tour-packages', icon: Globe2, image: 'beach.jpg' },
+    { id: 'fleet', title: 'Corporate & Travel Cabs', text: 'Airport, local, outstation and employee transport across Hyderabad.', path: '/cab-services', icon: CarFront, image: 'sedan.jpg' },
+    { id: 'study', title: 'Study Abroad & Visas', text: 'Clear guidance, application support and pre-departure assistance.', path: '/study-abroad', icon: GraduationCap, image: 'campus.jpg' },
+    { id: 'services', title: 'Flights, Hotels & IRCTC', text: 'Essential bookings for domestic and international journeys.', path: '/flights-hotels-train', icon: Plane, image: 'plane.jpg' },
   ]
   return (
     <section className="section" id="services">
@@ -260,14 +272,14 @@ function ServicesBento({ openDrawer: _openDrawer }: { openDrawer: (summary: stri
           <p>Practical support, transparent communication and global perspective—wherever you’re headed.</p>
         </div>
         <div className="bento">
-          {cards.map((c, i) => <motion.article id={i === 0 ? 'tours' : undefined} className={`service-card ${c.className}`} key={c.title} whileHover={{ y: -6 }} transition={{ duration: .2 }}>
-            <img src={c.image} alt="" />
+          {cards.map((c, i) => <motion.article id={i === 0 ? 'tours' : undefined} className="service-card" key={c.title} whileHover={{ y: -6 }} transition={{ duration: .2 }}>
+            <img className="service-card-image" src={imageSource(c.image)} alt="" onError={handleImageError} />
             <div className="service-shade" />
             <div className="service-content">
               <span className="service-icon"><c.icon size={22} /></span>
               <h3>{c.title}</h3>
               <p>{c.text}</p>
-              <button onClick={() => redirectToWhatsApp(c.title)}>Explore service <ArrowRight size={16} /></button>
+              <Link to={c.path}>Explore service <ArrowRight size={16} /></Link>
             </div>
           </motion.article>)}
         </div>
@@ -280,10 +292,10 @@ function FleetExplorer({ openDrawer: _openDrawer }: { openDrawer: (summary: stri
   const filters = ['All', 'Sedans', 'SUVs / Innova', 'Tempo Travellers', 'Buses']
   const [filter, setFilter] = useState('All')
   const fleet = [
-    { type: 'Sedans', name: 'Executive Sedan', seats: '4 seats', use: 'Airport transfers, local travel', image: 'https://images.unsplash.com/photo-1550355291-bbee04a92027?auto=format&fit=crop&w=700&q=85' },
-    { type: 'SUVs / Innova', name: 'Premium SUV / Innova', seats: '6–7 seats', use: 'Family, outstation, corporate', image: 'https://images.unsplash.com/photo-1519641471654-76ce0107ad1b?auto=format&fit=crop&w=700&q=85' },
-    { type: 'Tempo Travellers', name: 'Tempo Traveller', seats: '12–17 seats', use: 'Group tours, pilgrimages', image: 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=700&q=85' },
-    { type: 'Buses', name: 'Luxury Bus', seats: '25–50 seats', use: 'Corporate, large groups', image: 'https://images.unsplash.com/photo-1570125909232-eb263c188f7e?auto=format&fit=crop&w=700&q=85' },
+    { type: 'Sedans', name: 'Executive Sedan', seats: '4 seats', use: 'Airport transfers, local travel', image: 'sedan.jpg' },
+    { type: 'SUVs / Innova', name: 'Premium SUV / Innova', seats: '6–7 seats', use: 'Family, outstation, corporate', image: 'suv.jpg' },
+    { type: 'Tempo Travellers', name: 'Tempo Traveller', seats: '12–17 seats', use: 'Group tours, pilgrimages', image: 'tempo.jpg' },
+    { type: 'Buses', name: 'Luxury Bus', seats: '25–50 seats', use: 'Corporate, large groups', image: 'bus.jpg' },
   ]
   const visible = filter === 'All' ? fleet : fleet.filter(v => v.type === filter)
   return (
@@ -297,7 +309,7 @@ function FleetExplorer({ openDrawer: _openDrawer }: { openDrawer: (summary: stri
         <div className="fleet-grid">
           <AnimatePresence mode="popLayout">{visible.map(v => (
             <motion.article layout initial={{ opacity: 0, scale: .96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: .96 }} className="fleet-card" key={v.name}>
-              <div className="fleet-image"><img src={v.image} alt={v.name} /><span>{v.seats}</span></div>
+              <div className="fleet-image"><img src={imageSource(v.image)} alt={v.name} onError={handleImageError} /><CarFront className="visual-icon" size={38} aria-hidden="true" /><span>{v.seats}</span></div>
               <div className="fleet-body"><h3>{v.name}</h3><p>{v.use}</p>
                 <div className="fleet-benefits"><span><ShieldCheck size={15} /> Safety checked</span><span><Users size={15} /> Professional driver</span></div>
                 <button onClick={() => redirectToWhatsApp('Cab & Fleet', { 'Vehicle': v.name, 'Capacity': v.seats, 'Recommended for': v.use })}>Request a quote <ArrowRight size={16} /></button>
@@ -331,7 +343,7 @@ function VisaStepper({ openDrawer: _openDrawer }: { openDrawer: (summary: string
             {selected === types[0] && i === 0 && <span className="step-tag">Profile review</span>}
           </motion.div>)}
         </div>
-        <div className="study-cta"><Award size={28} /><div><strong>Not sure which pathway fits you?</strong><span>Get a free profile and country consultation.</span></div><button onClick={() => redirectToWhatsApp('Study Abroad & Visa', { 'Visa / Guidance': selected })}>Start your pathway <ArrowRight size={16} /></button></div>
+        <div className="study-cta"><Award size={28} /><div><strong>Not sure which pathway fits you?</strong><span>Get a free profile and country consultation.</span></div><button onClick={() => redirectToWhatsApp('Study Abroad & Visa', { 'Visa / Guidance': selected })}>Get Free Counselling <ArrowRight size={16} /></button></div>
       </div>
     </section>
   )
@@ -353,7 +365,7 @@ function TravelAddons({ openDrawer: _openDrawer }: { openDrawer: (summary: strin
         <div className="section-heading"><div><div className="eyebrow"><Luggage size={15} /> Travel add-ons</div><h2>Make the journey even easier</h2></div><p>Add the essentials you need while planning your trip.</p></div>
         <div className="addons-grid">{addons.map((a, i) => <motion.article layout className={`addon-card ${open === i ? 'open' : ''}`} key={a.title}>
           <button className="addon-main" onClick={() => setOpen(open === i ? null : i)} aria-expanded={open === i}>
-            <span className="addon-icon"><a.icon size={24} /></span><div><h3>{a.title}</h3><p>{a.text}</p></div><ChevronDown size={18} />
+            <span className="addon-icon"><a.icon size={24} /></span><div className="addon-copy"><h3>{a.title}</h3><p>{a.text}</p></div><ChevronDown size={18} />
           </button>
           <AnimatePresence>{open === i && <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="addon-detail"><p>{a.detail}</p>
             <button className={added.includes(a.title) ? 'added' : ''} onClick={() => toggle(a.title)}>{added.includes(a.title) ? <><Check size={15} /> Added to quote</> : 'Add to quote'}</button>
@@ -391,8 +403,6 @@ function QuoteDrawer({ state, setState }: { state: DrawerState; setState: (s: Dr
   const [form, setForm] = useState({ name: '', phone: '', email: '', message: '' })
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
-  }
-  const sendWhatsApp = () => {
     redirectToWhatsApp(state.summary ? 'Travel Quote' : 'General Enquiry', {
       Request: state.summary || 'Please help me plan my journey',
       Name: form.name,
@@ -400,6 +410,7 @@ function QuoteDrawer({ state, setState }: { state: DrawerState; setState: (s: Dr
       Email: form.email,
       Notes: form.message,
     })
+    setState({ open: false, summary: '' })
   }
   return <AnimatePresence>{state.open && <>
     <motion.div className="drawer-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setState({ open: false, summary: '' })} />
@@ -411,7 +422,7 @@ function QuoteDrawer({ state, setState }: { state: DrawerState; setState: (s: Dr
         <label>Phone number<input required type="tel" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} placeholder="+91" /></label>
         <label>Email (optional)<input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} placeholder="you@example.com" /></label>
         <label>How can we help?<textarea value={form.message} onChange={e => setForm({...form, message: e.target.value})} placeholder="Dates, destinations, travelers or any special needs" /></label>
-        <button type="button" className="drawer-submit" onClick={sendWhatsApp}><MessageCircle size={19} /> Send via WhatsApp</button>
+        <button type="submit" className="drawer-submit"><MessageCircle size={19} /> Send via WhatsApp</button>
         <a href="tel:+917997226661" className="drawer-call"><Phone size={17} /> Or call +91 79972 26661</a>
       </form>
     </motion.aside>
@@ -422,8 +433,8 @@ function Footer({ openDrawer }: { openDrawer: (summary?: string) => void }) {
   return (
     <footer id="contact">
       <div className="container footer-grid">
-        <div className="footer-brand"><Link className="brand footer-logo" to="/" aria-label="GOYAD Travel Home"><span className="brand-logo"><img src={`${import.meta.env.BASE_URL}logo2.png`} alt="GOYAD Travel" /></span></Link>
-          <p>Travel made simple. From planning to departure.</p><div className="socials"><a href="https://www.instagram.com/goyadtravel/" target="_blank" aria-label="Instagram"><Globe2 /></a><a href="https://wa.me/917997226661" target="_blank" aria-label="WhatsApp"><MessageCircle /></a></div>
+        <div className="footer-brand"><Link className="brand footer-logo" to="/" aria-label="GOYAD Travel Home"><span className="brand-logo"><img src={`${import.meta.env.BASE_URL}logo2.png`} alt="GOYAD Travel" onError={handleImageError} /></span></Link>
+          <p>Travel made simple. From planning to departure.</p><div className="socials"><Link to="/contact" aria-label="Contact us"><Mail /></Link><button type="button" onClick={() => openDrawer()} aria-label="Get a travel quote"><MessageCircle /></button></div>
         </div>
         <div><h3>Explore</h3><Link to="/about">About Us</Link><Link to="/services">Services</Link><Link to="/tour-packages">Tours</Link><Link to="/cab-services">Cab & Fleet</Link><Link to="/study-abroad">Study Abroad</Link><Link to="/flights-hotels-train">Flight, Hotel & IRCTC</Link></div>
         <div><h3>Visit us</h3><p><MapPin size={16} /> 2nd Floor, Reliance Humsafar Building, Road No-11, Mithila Nagar, Banjara Hills, Hyderabad - 500034</p><p><Phone size={16} /> +91 79972 26661<br />+91 79972 26662</p><p><Mail size={16} /> contact@goyadtravel.com</p></div>
@@ -434,15 +445,17 @@ function Footer({ openDrawer }: { openDrawer: (summary?: string) => void }) {
   )
 }
 
-function PageHero({ eyebrow, title, text, image }: { eyebrow: string; title: string; text: string; image: string }) {
-  return <section className="page-hero" style={{ backgroundImage: `linear-gradient(90deg,rgba(27,47,110,.94),rgba(27,47,110,.38)),url(${image})` }}>
+function PageHero({ eyebrow, title, text, image = 'hero-travel.jpg' }: { eyebrow: string; title: string; text: string; image?: string }) {
+  return <section className="page-hero">
+    <img className="page-hero-image" src={imageSource(image)} alt="" onError={handleImageError} />
+    <div className="page-hero-shade" />
     <div className="container"><div className="eyebrow light">{eyebrow}</div><h1>{title}</h1><p>{text}</p></div>
   </section>
 }
 
 function AboutPage() {
   return <>
-    <PageHero eyebrow="About GOYAD Travel" title="Travel planning, made personal" text="A Hyderabad-based travel agency bringing practical, clear and reliable support to every journey." image="https://images.unsplash.com/photo-1527631746610-bca00a040d60?auto=format&fit=crop&w=1800&q=85" />
+    <PageHero eyebrow="About GOYAD Travel" title="Travel planning, made personal" text="A Hyderabad-based travel agency bringing practical, clear and reliable support to every journey." image="hero-travel.jpg" />
     <section className="section"><div className="container about-grid">
       <article><div className="eyebrow">Our experience</div><h2>Backed by real international experience</h2><p>GOYAD Travel was built from real international experience. Our founder has lived, studied and worked in Sweden and Canada, gaining first-hand experience of international education, travel, cultural differences and the practical challenges of living abroad.</p><p>That experience shapes the way we assist our customers today — with clear guidance, transparent communication and practical support for travel, visa and study-abroad requirements.</p></article>
       <div className="founder-card"><span>Founder, GOYAD Travel</span><strong>Global perspective.<br />Personal assistance.</strong><p>Whether you're planning a holiday, travelling for work, booking your next journey or considering studying abroad, our goal is simple: make the process easier, clearer and more reliable.</p></div>
@@ -455,54 +468,101 @@ function AboutPage() {
   </>
 }
 
-function ServicesPage({ openDrawer: _openDrawer }: { openDrawer: (summary?: string) => void }) {
+function ServicesPage({ openDrawer }: { openDrawer: (summary?: string) => void }) {
   const services = [
-    ['Domestic & International Tours','Customised holidays, pilgrimages, honeymoons and group travel','/tour-packages',Globe2],
-    ['Study Abroad & Visa Services','Course, country, application, visa and document guidance','/study-abroad',GraduationCap],
-    ['Corporate & Travel Cab Services','Airport, local, outstation, employee and group transport','/cab-services',CarFront],
-    ['Flight, Hotel & Train Reservations','Domestic and international flights, hotels and IRCTC rail','/flights-hotels-train',Plane],
-  ] as const
-  return <><PageHero eyebrow="Complete travel solutions" title="All the support your journey needs" text="From planning your holiday to arranging transportation, visas and essential bookings, GOYAD Travel brings the key parts of your journey together." image="https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=1800&q=85" />
-    <section className="section"><div className="container"><div className="service-page-grid">{services.map(([title,text,path,Icon]) => <article key={title}><Icon /><h2>{title}</h2><p>{text}</p><Link to={path}>Explore service <ArrowRight size={16} /></Link></article>)}</div></div></section>
-    <section className="section addons-section"><div className="container"><div className="section-heading"><div><div className="eyebrow">Travel add-ons</div><h2>Helpful essentials for a smoother journey</h2></div></div><div className="simple-addon-grid">{['Travel Insurance','Forex Assistance','International SIM','Travel Essentials'].map((x,i)=><article key={x}><span>0{i+1}</span><h3>{x}</h3><button onClick={()=>redirectToWhatsApp('Travel Add-ons', { 'Add-on': x })}>Add to enquiry</button></article>)}</div></div></section>
+    {
+      title: 'Domestic & International Tours',
+      text: 'Plan customised holidays across India and international destinations, with flexible itineraries built around your travel needs.',
+      includes: ['Domestic & International Holidays', 'Pilgrimage & Family Tours', 'Honeymoon & Leisure Trips', 'Corporate & Group Travel'],
+      path: '/tour-packages',
+      icon: Globe2,
+      image: 'beach.jpg',
+    },
+    {
+      title: 'Corporate & Travel Cab Services',
+      text: 'Reliable transportation for businesses, airport transfers, local travel and outstation journeys, with professional drivers and well-maintained vehicles.',
+      includes: ['Airport Transfers', 'Local & Outstation Trips', 'Corporate Employee Transport', 'Sedan, SUV, Innova & Tempo Traveller'],
+      path: '/cab-services',
+      icon: CarFront,
+      image: 'sedan.jpg',
+    },
+    {
+      title: 'Study Abroad & Visa Services',
+      text: 'Practical guidance shaped by real international experience, from choosing a study pathway to preparing visa documents.',
+      includes: ['Study Abroad Guidance', 'Student Visa Assistance', 'Tourist & Visitor Visas', 'Work Visa Guidance', 'Document & Application Support'],
+      path: '/study-abroad',
+      icon: GraduationCap,
+      image: 'campus.jpg',
+    },
+    {
+      title: 'Flight, Hotel & Train Reservations',
+      text: 'Arrange essential bookings for your journey, from flights and hotels to domestic rail reservations.',
+      includes: ['Domestic & International Flights', 'Hotel Reservations', 'IRCTC-accredited Train Reservations', 'Travel Booking Support'],
+      path: '/flights-hotels-train',
+      icon: Plane,
+      image: 'plane.jpg',
+    },
+  ]
+  return <><PageHero eyebrow="Complete travel solutions" title="All the support your journey needs" text="From planning your holiday to arranging transportation, visas and essential bookings, GOYAD Travel brings the key parts of your journey together." image="plane.jpg" />
+    <section className="section"><div className="container"><div className="service-page-grid">{services.map(({title,text,path,icon:Icon,includes,image}) => <article key={title}><div className="service-page-visual"><img src={imageSource(image)} alt="" onError={handleImageError}/><span><Icon size={22}/></span></div><span className="service-page-icon"><Icon size={22}/></span><h2>{title}</h2><p>{text}</p><ul>{includes.map(item=><li key={item}><CircleCheck size={16}/>{item}</li>)}</ul><Link to={path}>Explore service <ArrowRight size={16} /></Link></article>)}</div></div></section>
+    <section className="section addons-section"><div className="container"><div className="section-heading"><div><div className="eyebrow">Travel add-ons</div><h2>Helpful essentials for a smoother journey</h2></div></div><div className="simple-addon-grid">{['Travel Insurance','Forex Assistance','International SIM','Travel Essentials'].map((x,i)=><article key={x}><span>0{i+1}</span><h3>{x}</h3><button onClick={()=>openDrawer(`Travel add-on: ${x}`)}>Add to enquiry</button></article>)}</div></div></section>
   </>
 }
 
-function TourPackagesPage({ openDrawer: _openDrawer }: { openDrawer: (summary?: string) => void }) {
+function TourPackagesPage() {
   const [filter,setFilter]=useState('All')
-  const packages=[
-    ['Kashmir','Domestic','5N/6D | 7N/8D | Custom','https://goyadtravel.com/wp-content/uploads/2026/03/kashmir-1024x683.jpg','Snow mountains, valleys and houseboats'],
-    ['Goa','Domestic','3N/4D | 5N/6D | Custom','https://goyadtravel.com/wp-content/uploads/2026/03/goa.webp','Beaches, nightlife and water sports'],
-    ['Manali','Domestic','4N/5D | 6N/7D | Custom','https://goyadtravel.com/wp-content/uploads/2026/03/manali-1024x683.jpg','Snow, adventure and peaceful hills'],
-    ['Kerala','Domestic','4N/5D | 6N/7D | Custom','https://goyadtravel.com/wp-content/uploads/2026/03/kerala-1024x681.jpg','Backwaters, beaches and greenery'],
-    ['Ooty','Domestic','2N/3D | 4N/5D | Custom','https://goyadtravel.com/wp-content/uploads/2026/03/ooty-1024x683.jpg','A budget-friendly hill station'],
-    ['Dubai','International','4N/5D | 6N/7D | Custom','https://goyadtravel.com/wp-content/uploads/2026/03/111111111111111111111111.png','City of Gold and desert safaris'],
-    ['Bali','International','5N/6D | 7N/8D | Custom','https://goyadtravel.com/wp-content/uploads/2026/03/bali-1024x640.avif','Beaches, temples and magical sunsets'],
-    ['Thailand','International','4N/5D | 6N/7D | Custom','https://goyadtravel.com/wp-content/uploads/2026/03/thailand.jpg','Temples, islands and street food'],
-    ['Singapore & Malaysia','International','5N/6D | 7N/8D | Custom','https://goyadtravel.com/wp-content/uploads/2026/03/singapore-1024x612.avif','Gardens, towers and Batu Caves'],
-    ['Maldives','International','3N/4D | 5N/6D | Custom','https://goyadtravel.com/wp-content/uploads/2026/03/ooty-1024x683.jpg','Overwater villas and coral reefs'],
-  ] as const
-  const visible=filter==='All'?packages:packages.filter(p=>p[1]===filter)
-  return <><PageHero eyebrow="Customised tour packages" title="Your journey, your way" text="Customised Domestic, International & Pilgrimage Tour Packages from Hyderabad. You choose the place, days and budget. We handle everything." image="https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=1800&q=85" />
-    <section className="section"><div className="container"><div className="filter-tabs">{['All','Domestic','International'].map(f=><button className={filter===f?'active':''} onClick={()=>setFilter(f)} key={f}>{f}</button>)}</div><div className="tour-grid">{visible.map(p=><article className="tour-card" key={p[0]}><img src={p[3]} alt={p[0]} /><div><span>{p[1]}</span><h3>{p[0]}</h3><p>{p[4]}</p><small>Options: {p[2]}</small><button onClick={()=>redirectToWhatsApp('Tour Package', { 'Destination': p[0], 'Package type': p[1], 'Available options': p[2], 'Highlights': p[4] })}>Explore package <ArrowRight size={16}/></button></div></article>)}</div></div></section>
+  const categories=['All','Domestic','International','Pilgrimage & Heritage','Corporate MICE']
+  const visible=filter==='All'?tourPackages:tourPackages.filter(p=>p.category===filter)
+  return <><PageHero eyebrow="Customised tour packages" title="Your journey, your way" text="Customised Domestic, International & Pilgrimage Tour Packages from Hyderabad. You choose the place, days and budget. We handle everything." image="beach.jpg" />
+    <section className="section"><div className="container"><div className="filter-tabs">{categories.map(f=><button className={filter===f?'active':''} onClick={()=>setFilter(f)} key={f}>{f}</button>)}</div><div className="tour-grid">{visible.map(p=><article className="tour-card" key={p.slug}><div className="tour-card-visual"><img src={imageSource(p.image)} alt={p.name} onError={handleImageError}/><span className="visual-icon"><Compass size={30}/></span></div><div><span>{p.category}</span><h3>{p.name}</h3><p>{p.summary}</p><small>Options: {p.duration}</small><Link to={`/tour-packages/${p.slug}`}>Explore {p.name} <ArrowRight size={16}/></Link></div></article>)}</div></div></section>
+  </>
+}
+
+function TourPackageDetailPage() {
+  const { slug } = useParams()
+  const tour = tourPackages.find(item => item.slug === slug)
+
+  if (!tour) {
+    return <PolicyPage title="Package not found"><p>This tour package is not available. <Link to="/tour-packages">Explore all tour packages.</Link></p></PolicyPage>
+  }
+
+  return <>
+    <PageHero eyebrow={tour.category} title={`${tour.name} tour package`} text={tour.summary} image={tour.image} />
+    <section className="section">
+      <div className="container package-detail">
+        <div className="package-detail-intro"><div><div className="eyebrow">Flexible durations</div><h2>{tour.duration}</h2><p>Pricing is available on request. Tell us your dates, group size and preferences for a customised proposal.</p></div><Link to="/tour-packages">← All packages</Link></div>
+        <div className="package-detail-grid">
+          <article><h2>Highlights</h2><ul>{tour.highlights.map(item=><li key={item}><CircleCheck size={17}/>{item}</li>)}</ul></article>
+          <article><h2>What can be arranged</h2><ul>{packageInclusions.map(item=><li key={item}><CircleCheck size={17}/>{item}</li>)}</ul><p className="package-note">These are planning options, not guaranteed inclusions. Final services and costs are confirmed in your personalised quote.</p></article>
+        </div>
+        <details className="itinerary-details">
+          <summary>View a sample itinerary</summary>
+          <ol>{tour.itinerary.map((day,index)=><li key={`${index}-${day}`}><strong>Day {index+1}</strong><span>{day}</span></li>)}</ol>
+          <p>Sample plan only. The final route and day-by-day schedule are adjusted to your selected duration and requirements.</p>
+        </details>
+        <div className="package-enquiry">
+          <div><h2>Make this trip yours</h2><p>Share your preferred dates and travel style to get a tailored package proposal.</p></div>
+          <button className="primary-button" onClick={()=>redirectToWhatsApp('Tour Package Enquiry', { Package: tour.name, Category: tour.category, 'Duration options': tour.duration, Highlights: tour.highlights.join('; ') })}>Customize &amp; Enquire on WhatsApp <MessageCircle size={17}/></button>
+        </div>
+      </div>
+    </section>
   </>
 }
 
 function StudyAbroadPage({ openDrawer: _openDrawer }: { openDrawer: (summary?: string) => void }) {
-  const [country,setCountry]=useState('United Kingdom')
-  const countries=['United Kingdom','United States','Canada','Australia','Europe','New Zealand','Dubai']
-  const details:Record<string,[string,string,string]>={
-    'United Kingdom':['Student Visa','MBA, Engineering, Law, Data Science','2 years (Graduate Route)'],
-    'United States':['F-1 Student Visa','MS, MBA, PhD, STEM','OPT up to 3 years for STEM'],
-    'Canada':['Study Permit','Diplomas, Postgrad, Business, IT','PGWP up to 3 years'],
-    'Australia':['Student Visa (Subclass 500)','Engineering, Nursing, IT, Business','Subclass 485 2–4 years'],
-    'Europe':['Country-specific Student Visa','Engineering, Tech, Pharma, Research','Vary by country and programme'],
-    'New Zealand':['Student Visa','IT, Engineering, Hospitality','Post-study options vary'],
-    'Dubai':['Student Visa','Business, Hospitality, Computing','Vary by programme'],
-  }
-  const d=details[country]
-  return <><PageHero eyebrow="Study Abroad Consultants · Hyderabad" title="Dream of studying abroad? We've been there." text="Our founder personally lived, studied and worked in Europe and Canada for over 5 years. We guide you from first-hand knowledge." image="https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=1800&q=85" />
-    <section className="section"><div className="container"><div className="country-explorer"><div className="country-tabs">{countries.map(c=><button className={country===c?'active':''} onClick={()=>setCountry(c)} key={c}>{c}</button>)}</div><article><span>Selected destination</span><h2>{country}</h2><div className="country-facts"><p><small>Visa</small><strong>{d[0]}</strong></p><p><small>Popular</small><strong>{d[1]}</strong></p><p><small>Post-study work</small><strong>{d[2]}</strong></p></div><button className="primary-button" onClick={()=>redirectToWhatsApp('Study Abroad', { 'Target country': country, 'Visa': d[0], 'Popular fields': d[1], 'Post-study work': d[2] })}>Get free counselling <ArrowRight size={16}/></button></article></div></div></section>
+  const countries = [
+    { name: 'UK', visa: 'Student Visa', postStudy: '2-year Graduate Route (subject to current rules)', fields: 'MBA, Engineering, Law, Data Science', overview: 'Popular for one-year master’s programmes and universities including Oxford, Cambridge, UCL, Imperial and Manchester.', image: 'uk.jpg' },
+    { name: 'USA', visa: 'F-1 Visa', postStudy: 'OPT up to 3 years for eligible STEM graduates', fields: 'MS, MBA, PhD, STEM', overview: 'A wide choice of universities, specialisations and research programmes, with STEM OPT opportunities for eligible graduates.', image: 'usa.jpg' },
+    { name: 'Canada', visa: 'Study Permit', postStudy: 'PGWP up to 3 years where eligible', fields: 'Diplomas, Postgraduate, Business, IT', overview: 'A range of universities and colleges, with post-graduation work opportunities subject to current programme rules.', image: 'canada.jpg' },
+    { name: 'Australia', visa: 'Student Visa (Subclass 500)', postStudy: 'Subclass 485: 2–4 years, depending on eligibility and qualification', fields: 'Engineering, Nursing, IT, Business', overview: 'Internationally recognised universities and a welcoming student environment, with graduate visa rules dependent on qualification.', image: 'australia.jpg' },
+    { name: 'Europe', visa: 'Country-specific Student Visa / Residence Permit', postStudy: 'Varies by country and programme', fields: 'Engineering, Tech, Pharma, Research', overview: 'Explore options including Germany, France, Ireland and Sweden; tuition and language requirements vary by country and course.', image: 'europe.jpg' },
+    { name: 'New Zealand', visa: 'Student Visa', postStudy: 'Post-study work options up to 3 years, depending on eligibility', fields: 'Agriculture, IT, Hospitality, Environmental Science', overview: 'A welcoming study destination with options across universities and practical career-focused programmes.', image: 'new-zealand.jpg' },
+    { name: 'Dubai / UAE', visa: 'Student Residence Visa', postStudy: 'Depends on programme and applicable UAE rules', fields: 'Business, Hospitality, Computing', overview: 'Study at international branch campuses and regional institutions in a growing education hub.', image: 'dubai.jpg' },
+  ]
+  return <><PageHero eyebrow="Study Abroad Consultants · Hyderabad" title="Dream of studying abroad? We've been there." text="Our founder personally lived, studied and worked in Europe and Canada for over 5 years. We guide you from first-hand knowledge." image="campus.jpg" />
+    <section className="section"><div className="container"><div className="section-heading"><div><div className="eyebrow">Explore your destination</div><h2>Study abroad destinations we support</h2></div><p>We help you compare course options, entry requirements and likely costs for your profile.</p></div><div className="study-destination-grid">{countries.map(c=><article key={c.name}><div className="study-destination-visual"><img src={imageSource(c.image)} alt={`${c.name} study destination`} onError={handleImageError}/><span className="visual-icon"><GraduationCap size={28}/></span></div><span>{c.name}</span><h3>{c.overview}</h3><div className="country-facts"><p><small>Visa</small><strong>{c.visa}</strong></p><p><small>Popular fields</small><strong>{c.fields}</strong></p><p><small>Post-study work</small><strong>{c.postStudy}</strong></p></div><button className="primary-button" onClick={()=>redirectToWhatsApp('Study Abroad Counselling', { 'Target country': c.name, 'Visa': c.visa, 'Popular fields': c.fields, 'Post-study work': c.postStudy })}>Get Free Counselling <ArrowRight size={16}/></button></article>)}</div></div></section>
+    <section className="section fee-section"><div className="container fee-panel"><div className="eyebrow">Our fees</div><h2>Transparent fees. No guesswork.</h2><p>Every student’s journey is different. University, destination and selected support services affect the cost, so GOYAD does not publish a one-size-fits-all service fee. During a free counselling session, the team explains what is included, the service cost and expected timeline before you decide.</p><ul><li>Clear breakdown before you pay anything</li><li>No obligation after the free consultation</li><li>Service costs explained separately from university, visa and other official fees</li></ul></div></section>
+    <section className="section"><div className="container study-faq"><div className="section-heading"><div><div className="eyebrow">Helpful answers</div><h2>Study abroad FAQs</h2></div></div><details><summary>What does study abroad guidance include?</summary><p>Support can include profile review, course and university shortlisting, application and offer letter assistance, SOP and document preparation, student visa guidance and pre-departure planning.</p></details><details><summary>How much does study abroad counselling cost?</summary><p>The first counselling session is free and there is no obligation. Any further service fee is explained in a clear breakdown before you commit; university tuition, visa fees and third-party charges are separate.</p></details><details><summary>Can you guarantee admission or a visa?</summary><p>No. Admission decisions are made by the institution and visa decisions by the relevant authority. GOYAD provides guidance and application support but cannot guarantee an outcome.</p></details><details><summary>How do I choose the right country and course?</summary><p>Options are reviewed against your academic profile, goals, preferred course, budget and timeline so you can compare a practical shortlist.</p></details></div></section>
     <section className="section fleet-section"><div className="container"><div className="section-heading"><div><div className="eyebrow">Student pathway</div><h2>Complete study abroad support</h2></div></div><div className="study-service-grid">{['University Shortlisting & Admissions','SOP Writing & Documentation','Offer Letter Assistance','Student Visa Application & Interview','Flight Bookings & Accommodation','Pre-Departure & Post-Arrival Help'].map((x,i)=><article key={x}><span>0{i+1}</span><h3>{x}</h3><p>{i===0?'Profile-based matching':i===1?'Expert documentation support':i===2?'Fast turnaround':i===3?'Mock interviews and document verification':i===4?'Student accommodation and airport pickup': 'Forex, SIM, banking and settling-in support'}</p></article>)}</div></div></section>
   </>
 }
@@ -515,8 +575,8 @@ function VisaPage({ openDrawer: _openDrawer }: { openDrawer: (summary?: string) 
     'Work Visa':['Valid passport','Employment offer or sponsor documents','Qualifications','Experience evidence','Financial records','Application and interview documents'],
     'Document & Application Support':['Passport copies','Application forms','Supporting information','Document checklist','Photographs','Country-specific requirements'],
   }
-  return <><PageHero eyebrow="Global Visa Services · Hyderabad" title="Your journey starts with the right visa" text="From tourist and visitor visas to student, work and business visas, GOYAD Travel provides practical guidance, document support and application assistance." image="https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=1800&q=85" />
-    <section className="section"><div className="container"><div className="visa-checklist"><div className="visa-switch" style={{justifyContent:'flex-start'}}>{Object.keys(data).map(c=><button className={category===c?'active':''} onClick={()=>setCategory(c)} key={c}>{c}</button>)}</div><div className="checklist-card"><div><span>Document checklist</span><h2>{category}</h2></div><ul>{data[category].map(x=><li key={x}><CircleCheck size={17}/>{x}</li>)}</ul><button className="primary-button" onClick={()=>redirectToWhatsApp('Visa Services', { 'Visa category': category, 'Document checklist': data[category].join(', ') })}>Get visa guidance <ArrowRight size={16}/></button></div></div></div></section>
+  return <><PageHero eyebrow="Global Visa Services · Hyderabad" title="Your journey starts with the right visa" text="From tourist and visitor visas to student, work and business visas, GOYAD Travel provides practical guidance, document support and application assistance." image="campus.jpg" />
+    <section className="section"><div className="container"><div className="visa-checklist"><div className="visa-switch" style={{justifyContent:'flex-start'}}>{Object.keys(data).map(c=><button className={category===c?'active':''} onClick={()=>setCategory(c)} key={c}>{c}</button>)}</div><div className="checklist-card"><div><span>Document checklist</span><h2>{category}</h2></div><ul>{data[category].map(x=><li key={x}><CircleCheck size={17}/>{x}</li>)}</ul><button className="primary-button" onClick={()=>redirectToWhatsApp('Visa Services', { 'Visa category': category, 'Document checklist': data[category].join(', ') })}>Get Free Counselling <ArrowRight size={16}/></button></div></div></div></section>
   </>
 }
 
@@ -527,7 +587,7 @@ function VisaPage({ openDrawer: _openDrawer }: { openDrawer: (summary?: string) 
     const [date,setDate]=useState('')
     const [passengers,setPassengers]=useState('')
     const tabs=['Domestic Flights','International Flights','Hotel Reservations','IRCTC Train Reservations']
-    return <><PageHero eyebrow="Travel Booking Services from Hyderabad" title="Flight, hotel & train reservations" text="Book domestic and international flights, hotels and train tickets with GOYAD Travel. Practical assistance from enquiry to confirmation." image="https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=1800&q=85" />
+    return <><PageHero eyebrow="Travel Booking Services from Hyderabad" title="Flight, hotel & train reservations" text="Book domestic and international flights, hotels and train tickets with GOYAD Travel. Practical assistance from enquiry to confirmation." image="plane.jpg" />
       <section className="section"><div className="container"><div className="booking-module"><div className="booking-tabs">{tabs.map(t=><button className={tab===t?'active':''} onClick={()=>setTab(t)} key={t}>{t}</button>)}</div><div className="booking-form">
         {tab==='Hotel Reservations' ? <><label>City / Destination<input value={to} onChange={e=>setTo(e.target.value)} placeholder="Destination" /></label><label>Check-in<input value={date} onChange={e=>setDate(e.target.value)} type="date"/></label><label>Check-out<input type="date"/></label><label>Guests<select value={passengers} onChange={e=>setPassengers(e.target.value)}><option value="">Select</option><option>1 Guest</option><option>2 Guests</option><option>Family</option></select></label></> : tab==='IRCTC Train Reservations' ? <><label>From<input value={from} onChange={e=>setFrom(e.target.value)} placeholder="Hyderabad"/></label><label>To<input value={to} onChange={e=>setTo(e.target.value)} placeholder="Destination"/></label><label>Travel date<input value={date} onChange={e=>setDate(e.target.value)} type="date"/></label><label>Passengers<select value={passengers} onChange={e=>setPassengers(e.target.value)}><option value="">Select</option><option>1 Passenger</option><option>2 Passengers</option><option>Family / Group</option></select></label></> : <><label>From<input value={from} onChange={e=>setFrom(e.target.value)} placeholder="City or airport"/></label><label>To<input value={to} onChange={e=>setTo(e.target.value)} placeholder="Destination"/></label><label>Travel date<input value={date} onChange={e=>setDate(e.target.value)} type="date"/></label><label>Passengers<select value={passengers} onChange={e=>setPassengers(e.target.value)}><option value="">Select</option><option>1 Passenger</option><option>2 Passengers</option><option>Family / Group</option></select></label></>}
       </div><button className="primary-button booking-submit" onClick={()=>redirectToWhatsApp('Flight, Hotel & Train', { 'Booking type': tab, 'From / City': from, 'To / Destination': to, 'Travel date': date, 'Passengers / Guests': passengers })}>Get your travel quote <ArrowRight size={16}/></button></div></div></section>
@@ -545,41 +605,50 @@ function VisaPage({ openDrawer: _openDrawer }: { openDrawer: (summary?: string) 
       ['Innova','6–7 seats','Family and premium outstation','Innova'],
       ['Tempo Traveller','12–17 seats','Group tours and pilgrimage','Tempo'],
     ] as const
-    return <><PageHero eyebrow="Cab Service · Hyderabad" title="Reliable cab service for every journey" text="Local cabs, airport transfers, sightseeing, pilgrimage trips, one-way and round-trip outstation travel, and group transportation." image="https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&w=1800&q=85" />
+    return <><PageHero eyebrow="Cab Service · Hyderabad" title="Reliable cab service for every journey" text="Local cabs, airport transfers, sightseeing, pilgrimage trips, one-way and round-trip outstation travel, and group transportation." image="sedan.jpg" />
       <section className="section"><div className="container"><div className="cab-calculator"><div><span>Cab enquiry calculator</span><h2>Choose your journey</h2><label>Trip type<select value={tripType} onChange={e=>setTripType(e.target.value)}><option>Airport Transfer</option><option>Local Cab</option><option>One-Way Outstation</option><option>Round-Trip Outstation</option><option>Corporate Employee Transport</option></select></label><label>Pickup / Destination<div className="route-fields"><input value={pickup} onChange={e=>setPickup(e.target.value)} placeholder="Hyderabad"/><input value={destination} onChange={e=>setDestination(e.target.value)} placeholder="Destination"/></div></label></div><div className="vehicle-picker"><span>Vehicle type</span>{vehicles.map(v=><button key={v[0]} className={vehicle===v[0]?'active':''} onClick={()=>setVehicle(v[0])}><strong>{v[0]}</strong><small>{v[1]} · {v[3]}</small></button>)}</div><button className="primary-button" onClick={()=>redirectToWhatsApp('Cab & Fleet', { 'Trip type': tripType, 'Pickup': pickup, 'Destination': destination, 'Vehicle': vehicle })}>Get cab quote <ArrowRight size={16}/></button></div></div></section>
     </>
   }
 
-  const blogArticles=[
-    ['English Proficiency Test for Study Abroad: Complete Beginner’s Guide','Visa Services','IELTS, PTE, TOEFL and study abroad basics','https://goyadtravel.com/wp-content/uploads/2026/08/1-English-1024x1024.png'],
-    ['Study in France from Hyderabad: 9 Proven Steps','Visa Services','Campus France, VLS-TS and France student visa','https://goyadtravel.com/wp-content/uploads/2026/08/France-683x1024.png'],
-    ['Scholarships for Indian Students Abroad: 9 Best Options','Visa Services','Chevening, DAAD, Fulbright-Nehru','https://goyadtravel.com/wp-content/uploads/2026/08/scholarships-1024x559.jpeg'],
-    ['IELTS vs PTE vs TOEFL: Best Comparison','Visa Services','English proficiency and study abroad exams','https://goyadtravel.com/wp-content/uploads/2026/08/Exams-ieltspte-toefl-1024x559.jpeg'],
-    ['SOP for Study Abroad: 7 Best Writing Tips','Visa Services','Statement of Purpose writing','https://goyadtravel.com/wp-content/uploads/2026/08/SOP-1024x559.jpeg'],
-    ['Cost of Studying Abroad from India','Travel Guides','Education cost comparison and study budgets','https://goyadtravel.com/wp-content/uploads/2026/08/Cost-of-study-from-india-1024x559.jpeg'],
-    ['Train Ticket Booking Hyderabad: IRCTC Agent Tips','Flights & Hotels','Railway reservation and Tatkal booking','https://goyadtravel.com/wp-content/uploads/2026/08/Train-flyer-777x1024.png'],
-    ['Forex Exchange Hyderabad: 7 Best Tips','Travel Guides','Currency exchange and forex cards','https://goyadtravel.com/wp-content/uploads/2026/08/Forex-1024x683.png'],
-  ] as const
-
   function BlogPage({ guides=false }:{guides?:boolean}) {
     const [category,setCategory]=useState('All')
-    const categories=['All','Visa Services','Travel Guides','Flights & Hotels']
-    const visible=category==='All'?blogArticles:blogArticles.filter(a=>a[1]===category)
-    return <><PageHero eyebrow={guides?'Practical travel guides':'Travel Blog'} title={guides?'Travel guides for smarter journeys':'Travel stories, advice and guides'} text="Read practical information on study abroad, visas, transport, bookings and travel planning." image="https://images.unsplash.com/photo-1499750310107-5fef28a66643?auto=format&fit=crop&w=1800&q=85" />
-      <section className="section"><div className="container"><div className="filter-tabs">{categories.map(c=><button className={category===c?'active':''} onClick={()=>setCategory(c)} key={c}>{c}</button>)}</div><div className="blog-grid">{visible.map(a=><article key={a[0]}><img src={a[3]} alt={a[0]}/><div><span>{a[1]}</span><h2>{a[0]}</h2><p>{a[2]}</p><a href="https://goyadtravel.com/travel-blog-hyderabad/" target="_blank" rel="noreferrer">Read on GOYAD <ArrowRight size={15}/></a></div></article>)}</div></div></section>
+    const categories=guides?['All','Travel Guides']:['All','Visa Services','Flights & Hotels']
+    const collection=blogPosts.filter(post=>guides?post.category==='Travel Guides':post.category!=='Travel Guides')
+    const visible=category==='All'?collection:collection.filter(post=>post.category===category)
+    const basePath=guides?'/travel-guides':'/blog'
+    return <><PageHero eyebrow={guides?'Practical travel guides':'Travel Blog'} title={guides?'Travel guides for smarter journeys':'Travel stories, advice and guides'} text="Locally available planning articles for study, travel, bookings and everyday trip preparation." image="blog-books.jpg" />
+      <section className="section"><div className="container"><div className="filter-tabs">{categories.map(c=><button className={category===c?'active':''} onClick={()=>setCategory(c)} key={c}>{c}</button>)}</div><div className="blog-grid">{visible.map(post=><article key={post.slug}><div className="blog-card-visual"><img src={imageSource(post.image)} alt={post.title} onError={handleImageError}/><span className="visual-icon"><Compass size={30}/></span></div><div><span>{post.category}</span><h2>{post.title}</h2><p>{post.summary}</p><Link to={`${basePath}/${post.slug}`}>{guides?'Read Guide':'Read Full Article'} <ArrowRight size={15}/></Link></div></article>)}</div></div></section>
+    </>
+  }
+
+  function BlogArticlePage({ guides=false }:{guides?:boolean}) {
+    const { slug }=useParams()
+    const post=blogPosts.find(item=>item.slug===slug && (guides?item.category==='Travel Guides':item.category!=='Travel Guides'))
+    if(!post) return <PolicyPage title="Article not found"><p>This article is not available. <Link to={guides?'/travel-guides':'/blog'}>Return to {guides?'travel guides':'the blog'}.</Link></p></PolicyPage>
+    return <><PageHero eyebrow={post.category} title={post.title} text={post.summary} image={post.image}/>
+      <section className="section"><article className="container policy-content article-content">
+        <Link className="article-back-link" to={guides?'/travel-guides':'/blog'}>← All {guides?'travel guides':'articles'}</Link>
+        {post.sections.map(section=><section key={section.heading}><h2>{section.heading}</h2>{section.paragraphs.map(paragraph=><p key={paragraph}>{paragraph}</p>)}{section.points&&<ul>{section.points.map(point=><li key={point}>{point}</li>)}</ul>}</section>)}
+        <p className="article-disclaimer">Information is general planning guidance, not legal, immigration or financial advice. Requirements and policies can change; confirm current details with the relevant official authority or provider.</p>
+        <Link className="article-contact-link" to="/contact">Need help planning? Contact us <ArrowRight size={16}/></Link>
+      </article></section>
     </>
   }
 
   function ContactPage() {
     const [contact,setContact]=useState({ name:'', phone:'', email:'', service:'Tours', message:'' })
-    return <><PageHero eyebrow="Contact GOYAD Travel" title="Let's plan your journey, your way" text="Tell us what you need and our travel team will get back to you with the right options and next steps." image="https://images.unsplash.com/photo-1521791055366-0d553872125f?auto=format&fit=crop&w=1800&q=85" />
-      <section className="section"><div className="container contact-grid"><div className="contact-form-card"><div className="eyebrow">Send an enquiry</div><h2>How can we help?</h2><div className="contact-fields"><label>Full name<input required value={contact.name} onChange={e=>setContact({...contact,name:e.target.value})} placeholder="Your name"/></label><label>Phone number<input required value={contact.phone} onChange={e=>setContact({...contact,phone:e.target.value})} placeholder="+91"/></label><label>Email<input type="email" value={contact.email} onChange={e=>setContact({...contact,email:e.target.value})} placeholder="you@example.com"/></label><label>Service<select value={contact.service} onChange={e=>setContact({...contact,service:e.target.value})}><option>Tours</option><option>Cab & Fleet</option><option>Study Abroad</option><option>Visa Services</option><option>Flight / Hotel / Train</option></select></label><label className="full">Message<textarea value={contact.message} onChange={e=>setContact({...contact,message:e.target.value})} placeholder="Tell us your destination, dates or requirements"/></label></div><button type="button" className="primary-button" onClick={()=>redirectToWhatsApp(contact.service, { 'Name': contact.name, 'Phone': contact.phone, 'Email': contact.email, 'Notes': contact.message })}>Send on WhatsApp <MessageCircle size={17}/></button></div>
+    const submit = (event: React.FormEvent) => {
+      event.preventDefault()
+      redirectToWhatsApp(contact.service, { 'Name': contact.name, 'Phone': contact.phone, 'Email': contact.email, 'Notes': contact.message })
+    }
+    return <><PageHero eyebrow="Contact GOYAD Travel" title="Let's plan your journey, your way" text="Tell us what you need and our travel team will get back to you with the right options and next steps." />
+      <section className="section"><div className="container contact-grid"><form className="contact-form-card" onSubmit={submit}><div className="eyebrow">Send an enquiry</div><h2>How can we help?</h2><div className="contact-fields"><label>Full name<input required value={contact.name} onChange={e=>setContact({...contact,name:e.target.value})} placeholder="Your name"/></label><label>Phone number<input required type="tel" value={contact.phone} onChange={e=>setContact({...contact,phone:e.target.value})} placeholder="+91"/></label><label>Email<input type="email" value={contact.email} onChange={e=>setContact({...contact,email:e.target.value})} placeholder="you@example.com"/></label><label>Service<select value={contact.service} onChange={e=>setContact({...contact,service:e.target.value})}><option>Tours</option><option>Cab & Fleet</option><option>Study Abroad</option><option>Visa Services</option><option>Flight / Hotel / Train</option></select></label><label className="full">Message<textarea value={contact.message} onChange={e=>setContact({...contact,message:e.target.value})} placeholder="Tell us your destination, dates or requirements"/></label></div><button type="submit" className="primary-button">Send on WhatsApp <MessageCircle size={17}/></button></form>
         <aside className="office-card-large"><span>Office</span><h2>Banjara Hills, Hyderabad</h2><p><MapPin size={18}/>#2nd Floor, Reliance Humsafar Building, Road No-11, Mithila Nagar, Banjara Hills (Opp. Care Hospital Lane), Hyderabad, Telangana - 500034</p><p><Phone size={18}/><a href="tel:+917997226661">+91 7997226661</a><br/><a href="tel:+917997226662">+91 7997226662</a></p><p><Mail size={18}/>contact@goyadtravel.com</p><div><strong>Office hours</strong><span>Monday – Saturday: 10:00 AM – 6:00 PM</span><strong>WhatsApp support</strong><span>7 Days: 9:00 AM – 9:00 PM</span><small>Typically within 1 hour response</small></div></aside></div></section>
     </>
   }
 
   function PolicyPage({ title, children }: { title:string; children:React.ReactNode }) {
-    return <><PageHero eyebrow="GOYAD Travel" title={title} text="Please review the applicable terms for services booked through GOYAD Travel." image="https://images.unsplash.com/photo-1450101499163-c8848c66ca85?auto=format&fit=crop&w=1800&q=85" /><section className="section"><article className="container policy-content">{children}</article></section></>
+    return <><PageHero eyebrow="GOYAD Travel" title={title} text="Please review the applicable terms for services booked through GOYAD Travel." /><section className="section"><article className="container policy-content">{children}</article></section></>
   }
 
   const cancellationPolicy = <>
@@ -608,14 +677,12 @@ function VisaPage({ openDrawer: _openDrawer }: { openDrawer: (summary?: string) 
   </>
 
   const privacyPolicy = <>
-    <h2>Privacy Policy</h2><p><strong>Website: https://goyadtravel.com</strong></p>
-    <h3>Who we are</h3><p>Our website address is https://goyadtravel.com.</p>
-    <h3>Comments</h3><p>When visitors leave comments, we collect the data shown in the comments form, as well as the visitor's IP address and browser user agent string to help spam detection. An anonymized string created from your email address may be provided to the Gravatar service.</p>
-    <h3>Media</h3><p>If you upload images to the website, avoid uploading images with embedded location data (EXIF GPS). Downloaded website images may contain location information embedded by the original uploader.</p>
-    <h3>Cookies</h3><p>If you leave a comment, you may opt-in to saving your name, email address and website in cookies. Login, display-choice and article-editing cookies may also be set for convenience and security.</p>
-    <h3>Embedded content</h3><p>Articles may include embedded content from other websites. Embedded content behaves exactly as if the visitor had visited the other website and may collect data, use cookies or monitor interactions.</p>
-    <h3>Data sharing and retention</h3><p>If you request a password reset, your IP address may be included in the reset email. Comment and related metadata may be retained for follow-up moderation. Website users may request an exported copy or deletion of their personal data, subject to legal, security and administrative obligations.</p>
-    <h3>Where data is sent</h3><p>Visitor comments may be checked through an automated spam detection service.</p>
+    <h2>Privacy Policy</h2>
+    <h3>Information you provide</h3><p>This application does not create an account or store information entered into quote and contact forms on its own servers. When you choose to send an enquiry, the information you provide is included in a WhatsApp message addressed to GOYAD Travel.</p>
+    <h3>External services you choose</h3><p>Opening WhatsApp, placing a telephone call, sending email or viewing Google reviews connects you to the selected third-party service. Those services process data under their own privacy policies and terms.</p>
+    <h3>Local storage and cookies</h3><p>The application does not use account cookies or save form details in browser storage. Essential browser and hosting behavior may still apply when you access the site.</p>
+    <h3>Data minimisation</h3><p>Please include only information needed to respond to your travel enquiry. Do not send payment credentials, passwords or sensitive identity documents through an initial enquiry.</p>
+    <h3>Your choices</h3><p>You can choose not to submit a form and can contact the team by phone or email instead. For requests about information already sent to a third-party service, contact that service directly as well as GOYAD Travel.</p>
     <h3>Contact</h3><p>For privacy questions, contact <strong>contact@goyadtravel.com</strong> or +91 79972 26661.</p>
   </>
 
@@ -643,13 +710,16 @@ export default function App() {
           <Route path="/" element={<><Hero openDrawer={openDrawer}/><ServicesBento openDrawer={openDrawer}/><FleetExplorer openDrawer={openDrawer}/><VisaStepper openDrawer={openDrawer}/><TravelAddons openDrawer={openDrawer}/><ReviewsSection/></>} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/services" element={<ServicesPage openDrawer={openDrawer}/>} />
-          <Route path="/tour-packages" element={<TourPackagesPage openDrawer={openDrawer}/>} />
+          <Route path="/tour-packages" element={<TourPackagesPage />} />
+          <Route path="/tour-packages/:slug" element={<TourPackageDetailPage />} />
           <Route path="/study-abroad" element={<StudyAbroadPage openDrawer={openDrawer}/>} />
           <Route path="/visa-services" element={<VisaPage openDrawer={openDrawer}/>} />
           <Route path="/flights-hotels-train" element={<BookingPage/>} />
           <Route path="/cab-services" element={<CabPage/>} />
           <Route path="/blog" element={<BlogPage/>} />
+          <Route path="/blog/:slug" element={<BlogArticlePage/>} />
           <Route path="/travel-guides" element={<BlogPage guides/>} />
+          <Route path="/travel-guides/:slug" element={<BlogArticlePage guides/>} />
           <Route path="/contact" element={<ContactPage/>} />
           <Route path="/privacy-policy" element={<PolicyPage title="Privacy Policy">{privacyPolicy}</PolicyPage>} />
           <Route path="/goyad-travel-privacy-policy" element={<PolicyPage title="Privacy Policy">{privacyPolicy}</PolicyPage>} />
@@ -662,7 +732,7 @@ export default function App() {
       </main>
       <Footer openDrawer={openDrawer} />
       <QuoteDrawer state={drawer} setState={setDrawer} />
-      <a className="floating-whatsapp" href={whatsapp()} target="_blank" rel="noreferrer" aria-label="Chat with GOYAD Travel on WhatsApp"><MessageCircle size={24} /><span>WhatsApp</span></a>
+      <button className="floating-whatsapp" type="button" onClick={() => openDrawer()} aria-label="Get a travel quote"><MessageCircle size={24} /><span>Get a quote</span></button>
     </>
   )
 }
