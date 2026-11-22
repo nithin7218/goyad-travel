@@ -87,11 +87,16 @@ orange is used for primary actions and active states, and dark contrast is spars
 .planner-tabs button { flex:1; border:0; border-right:1px solid #edf0f4; background:transparent; color:#64748b; display:flex; align-items:center; justify-content:center; gap:7px; font-weight:600; font-size:14px; }
 .planner-tabs button.active { color:var(--color-brand-orange-text); background:var(--color-brand-orange-soft); box-shadow:inset 0 -3px var(--color-brand-orange-hover); }
 .planner-fields { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)) auto; gap:0; padding:10px 12px 12px; }
+.planner-fields-bookings { grid-template-columns:repeat(5,minmax(0,1fr)) auto; }
 .planner-field { position:relative; min-width:0; display:flex; flex-direction:column; border-right:1px solid #edf0f4; padding:5px 14px; }
 .planner-field:nth-child(4) { border-right:0; }
+.planner-fields-bookings .planner-field:nth-child(4) { border-right:1px solid #edf0f4; }
+.planner-fields-bookings .planner-field:nth-child(5) { border-right:0; }
 .planner-field span { font-size:14px; text-transform:uppercase; letter-spacing:.8px; color:#475569; font-weight:600; }
-.planner-field select { appearance:none; border:0; background:transparent; color:#172033; height:34px; width:100%; font-weight:700; outline:none; }
+.planner-field select,.planner-field input { appearance:none; border:0; background:transparent; color:#172033; height:34px; width:100%; font-weight:700; outline:none; }
+.planner-field input::placeholder { color:#64748b; font-weight:500; opacity:1; }
 .planner-field svg { position:absolute; right:12px; bottom:14px; color:#94a3b8; pointer-events:none; }
+.planner-error { grid-column:1/-1; margin:4px 14px; color:#b42318; font-size:14px; line-height:1.5; }
 .planner-submit { min-width:154px; height:48px; border:0; border-radius:8px; background:var(--color-brand-orange-action); color:white; padding:0 18px; display:flex; align-items:center; justify-content:center; gap:8px; font-weight:800; white-space:nowrap; box-shadow:0 10px 24px rgba(194,78,10,.28); transition:background .2s,transform .2s,box-shadow .2s; }
 .planner-submit:hover { background:var(--color-brand-orange-action-hover); transform:translateY(-1px); box-shadow:0 12px 26px rgba(168,66,6,.34); }
 .planner-submit:focus-visible { outline:3px solid #0d9488; outline-offset:3px; }
@@ -275,6 +280,8 @@ footer { background:#1B2F6E; color:#d7e1ec; padding:64px 0 20px; }
   .planner-fields { grid-template-columns:1fr; padding:8px; }
   .planner-field { border-right:0; border-bottom:1px solid #edf0f4; }
   .planner-field:nth-child(4) { border-bottom:0; }
+  .planner-fields-bookings .planner-field:nth-child(4) { border-right:0; border-bottom:1px solid #edf0f4; }
+  .planner-fields-bookings .planner-field:nth-child(5) { border-right:0; border-bottom:0; }
   .planner-submit { grid-column:1 / -1; width:100%; margin-top:8px; }
   .section-heading,.reviews-heading { align-items:flex-start; flex-direction:column; gap:16px; }
   .section-heading h2,.reviews-heading h2 { font-size:24px; letter-spacing:-.025em; }
@@ -321,7 +328,7 @@ footer { background:#1B2F6E; color:#d7e1ec; padding:64px 0 20px; }
   .credential-grid strong { color:#1B2F6E; margin-top:8px; font-size:14px; }
   .service-page-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:16px; }
   .service-page-grid article { border:1px solid #D1DAE5; border-radius:14px; padding:28px; background:white; }
-  .service-page-visual { height:170px; position:relative; overflow:hidden; margin:-28px -28px 20px; border-radius:14px 14px 0 0; background:linear-gradient(135deg,#f97316,#1e293b,#0f766e); }
+  .service-page-visual { width:calc(100% + 48px); height:170px; position:relative; overflow:hidden; margin:-24px -24px 20px; border-radius:14px 14px 0 0; background:linear-gradient(135deg,#f97316,#1e293b,#0f766e); }
   .service-page-visual span { position:absolute; right:14px; bottom:14px; z-index:1; width:44px; height:44px; display:grid; place-items:center; border-radius:12px; color:white; background:rgba(15,23,42,.6); }
   .service-page-icon { width:48px; height:48px; flex:0 0 auto; display:grid; place-items:center; border-radius:12px; background:var(--color-brand-orange-soft); color:var(--color-brand-orange-text); margin-bottom:20px; }
   .service-page-grid h2 { color:#1B2F6E; margin:16px 0 8px; }
@@ -493,9 +500,13 @@ footer { background:#1B2F6E; color:#d7e1ec; padding:64px 0 20px; }
 
   @media (min-width: 640px) and (max-width: 1023px) {
     .planner-fields { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .planner-fields-bookings { grid-template-columns:repeat(2,minmax(0,1fr)); }
     .planner-field:nth-child(odd) { border-right:1px solid #edf0f4; }
     .planner-field:nth-child(even) { border-right:0; }
     .planner-field:nth-child(n+3) { border-bottom:0; }
+    .planner-fields-bookings .planner-field:nth-child(4),
+    .planner-fields-bookings .planner-field:nth-child(5) { border-right:0; }
+    .planner-fields-bookings .planner-field:nth-child(n+3) { border-bottom:0; }
     .planner-submit { grid-column:1 / -1; width:100%; margin-top:8px; }
   }
 
@@ -503,8 +514,10 @@ footer { background:#1B2F6E; color:#d7e1ec; padding:64px 0 20px; }
   .hero-content h1 { font-size:30px; }
   .planner-fields { grid-template-columns:1fr; }
   .planner-field { border-right:0; border-bottom:1px solid #edf0f4 !important; }
-    .planner-field:nth-child(4) { border-bottom:0 !important; }
-    .planner-submit { grid-column:1; }
+  .planner-field:nth-child(4) { border-bottom:0 !important; }
+  .planner-fields-bookings .planner-field:nth-child(4) { border-right:0 !important; border-bottom:1px solid #edf0f4 !important; }
+  .planner-fields-bookings .planner-field:nth-child(5) { border-right:0 !important; border-bottom:0 !important; }
+  .planner-submit { grid-column:1; }
   .hero-section { height:910px; }
   .hero-content { height:390px; }
   .stepper { grid-template-columns:1fr; }
@@ -519,7 +532,7 @@ footer { background:#1B2F6E; color:#d7e1ec; padding:64px 0 20px; }
   .brand-logo { width:122px; }
   .brand-logo img { width:106px; }
   .planner-fields { min-width:0; }
-  .planner-field select { min-height:44px; }
+  .planner-field select,.planner-field input { min-height:44px; }
   .service-card, .fleet-card, .tour-card, .review-card,
   .addon-card, .study-service-grid article, .blog-grid article { min-width:0; }
   .route-fields { grid-template-columns:1fr; }
@@ -902,6 +915,11 @@ main .container p + p,
   .contact-form-card,
   .office-card-large {
     padding:32px;
+  }
+
+  .service-page-visual {
+    width:calc(100% + 64px);
+    margin:-32px -32px 20px;
   }
 }
 

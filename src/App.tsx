@@ -12,6 +12,9 @@ import './App.css'
 import { redirectToWhatsApp } from './utils/whatsapp'
 import { packageInclusions, tourPackages } from './data/tourPackages'
 import { blogPosts } from './data/blogPosts'
+import {
+  bookingFieldDefinitions, bookingTypes, type BookingFieldDefinition, type BookingType,
+} from './data/bookingOptions'
 
 type DrawerState = { open: boolean; summary: string }
 
@@ -26,6 +29,70 @@ function handleImageError(event: React.SyntheticEvent<HTMLImageElement>) {
     image.dataset.fallbackApplied = 'true'
     image.src = imageSource('fallback-travel.svg')
   }
+}
+
+function getBookingRequestValues(type: BookingType, values: Record<string, string>) {
+  return bookingFieldDefinitions[type].reduce<Record<string, string>>((request, field) => {
+    const value = values[field.key] !== undefined ? values[field.key].trim() : field.defaultValue
+    if (value) request[field.key] = value
+    return request
+  }, { 'Booking Type': type })
+}
+
+function getBookingValidationError(type: BookingType, values: Record<string, string>) {
+  const missingField = bookingFieldDefinitions[type].find(field => {
+    if (!field.required) return false
+    const value = values[field.key] !== undefined ? values[field.key] : field.defaultValue
+    return !value?.trim()
+  })
+  return missingField ? `${missingField.label} is required.` : ''
+}
+
+function BookingFields({
+  type, values, setValue, variant,
+}: {
+  type: BookingType
+  values: Record<string, string>
+  setValue: (key: string, value: string) => void
+  variant: 'planner' | 'page'
+}) {
+  return (
+    <>
+      {bookingFieldDefinitions[type].map((field: BookingFieldDefinition) => {
+        const className = variant === 'planner' ? 'planner-field' : undefined
+        const value = values[field.key] ?? field.defaultValue ?? ''
+        const isQuickDate = variant === 'planner' && field.control === 'date'
+        const isSelect = field.control === 'select' || isQuickDate
+        const options = field.options ?? []
+        return (
+          <label className={className} key={field.key}>
+            <span>{field.label}</span>
+            {isSelect ? (
+              <>
+                <select required={field.required} value={value} onChange={event => setValue(field.key, event.target.value)}>
+                  <option value="">Select</option>
+                  {options.map(option => <option key={option}>{option}</option>)}
+                </select>
+                {variant === 'planner' && <ChevronDown size={15} />}
+              </>
+            ) : (
+              <>
+                <input
+                  type={field.control === 'date' ? 'date' : 'text'}
+                  list={field.control === 'suggestion' ? field.listId : undefined}
+                  required={field.required}
+                  value={value}
+                  onChange={event => setValue(field.key, event.target.value)}
+                  placeholder={field.placeholder}
+                />
+                {field.control === 'suggestion' && <datalist id={field.listId}>{options.map(option => <option key={option} value={option} />)}</datalist>}
+              </>
+            )}
+          </label>
+        )
+      })}
+    </>
+  )
 }
 
 function Navbar({ openDrawer }: { openDrawer: (summary?: string) => void }) {
@@ -183,12 +250,26 @@ function Planner({ openDrawer: _openDrawer }: { openDrawer: (summary: string) =>
     { name: 'Tours', icon: Compass, action: 'Get Quote', fields: ['Holiday type', 'Travel month', 'Travelers', 'Budget'] },
     { name: 'Cab & Fleet', icon: CarFront, action: 'Book Cab', fields: ['Trip type', 'Pickup city', 'Vehicle', 'Cab travel date'] },
     { name: 'Study Abroad', icon: GraduationCap, action: 'Get Free Counselling', fields: ['Service', 'Country', 'Level', 'Timeline'] },
-    { name: 'Bookings', icon: Plane, action: 'Check Availability', fields: ['Booking', 'Route', 'Booking travel date', 'Passengers'] },
+    { name: 'Bookings', icon: Plane, action: 'Check Availability', fields: [] },
   ]
   const [tab, setTab] = useState(0)
-  const [values, setValues] = useState<Record<string, string>>({})
-  const set = (key: string, value: string) => setValues(prev => ({ ...prev, [key]: value }))
+  const [values, setValues] = useState<Record<string, string>>({ 'Booking Type': 'Domestic Flight' })
+  const [bookingError, setBookingError] = useState('')
+  const set = (key: string, value: string) => {
+    setValues(prev => ({ ...prev, [key]: value }))
+    setBookingError('')
+  }
+  const bookingType = bookingTypes.find(type => type === values['Booking Type']) ?? 'Domestic Flight'
   const submit = () => {
+    if (tab === 3) {
+      const error = getBookingValidationError(bookingType, values)
+      if (error) {
+        setBookingError(error)
+        return
+      }
+      redirectToWhatsApp(bookingType, getBookingRequestValues(bookingType, values))
+      return
+    }
     const activeValues = tabs[tab].fields.reduce<Record<string, string>>((selected, key) => {
       if (values[key]) selected[key] = values[key]
       return selected
@@ -203,11 +284,11 @@ function Planner({ openDrawer: _openDrawer }: { openDrawer: (summary: string) =>
   return (
     <div className="planner">
       <div className="planner-tabs" role="tablist">
-        {tabs.map((t, i) => <button role="tab" aria-selected={tab === i} key={t.name} className={tab === i ? 'active' : ''} onClick={() => setTab(i)}>
+      {tabs.map((t, i) => <button role="tab" aria-selected={tab === i} key={t.name} className={tab === i ? 'active' : ''} onClick={() => { setTab(i); setBookingError('') }}>
           <t.icon size={17} /> {t.name}
         </button>)}
       </div>
-      <div className="planner-fields">
+      <div className={tab === 3 ? 'planner-fields planner-fields-bookings' : 'planner-fields'}>
         {tab === 0 && <>
           {field('Holiday type', 'Holiday type', ['Domestic Holiday', 'International Holiday', 'Weekend Getaway', 'Honeymoon', 'Family', 'Pilgrimage', 'Corporate Group'])}
           {field('Travel month', 'Travel month', ['December', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November'])}
@@ -227,11 +308,10 @@ function Planner({ openDrawer: _openDrawer }: { openDrawer: (summary: string) =>
           {field('Timeline', 'Preferred timeline', ['Within 3 months', '3–6 months', '6–12 months', 'Just exploring'])}
         </>}
         {tab === 3 && <>
-          {field('Booking', 'Booking type', ['Domestic Flight', 'International Flight', 'Hotel Reservation', 'IRCTC Train Reservation'])}
-          {field('Route', 'Route', ['Hyderabad to ...', 'Mumbai to ...', 'Delhi to ...', 'International route'])}
-          {field('Booking travel date', 'Travel date', ['Today', 'Tomorrow', 'This week', 'Next month'])}
-          {field('Passengers', 'Passengers', ['1 Person', '2 People', 'Family', 'Group'])}
+          {field('Booking Type', 'Booking type', [...bookingTypes])}
+          <BookingFields type={bookingType} values={values} setValue={set} variant="planner" />
         </>}
+        {tab === 3 && bookingError && <p className="planner-error" role="alert">{bookingError}</p>}
         <button type="button" className="planner-submit" onClick={submit} aria-label={tab === 0 ? 'Get Quote - Enquire on WhatsApp' : tabs[tab].action}>
           {tabs[tab].action} {tab === 0 ? <MessageCircle size={18} /> : <ArrowRight size={18} />}
         </button>
@@ -580,19 +660,35 @@ function VisaPage({ openDrawer: _openDrawer }: { openDrawer: (summary?: string) 
   </>
 }
 
-  function BookingPage() {
-    const [tab,setTab]=useState('Domestic Flights')
-    const [from,setFrom]=useState('')
-    const [to,setTo]=useState('')
-    const [date,setDate]=useState('')
-    const [passengers,setPassengers]=useState('')
-    const tabs=['Domestic Flights','International Flights','Hotel Reservations','IRCTC Train Reservations']
-    return <><PageHero eyebrow="Travel Booking Services from Hyderabad" title="Flight, hotel & train reservations" text="Book domestic and international flights, hotels and train tickets with GOYAD Travel. Practical assistance from enquiry to confirmation." image="plane.jpg" />
-      <section className="section"><div className="container"><div className="booking-module"><div className="booking-tabs">{tabs.map(t=><button className={tab===t?'active':''} onClick={()=>setTab(t)} key={t}>{t}</button>)}</div><div className="booking-form">
-        {tab==='Hotel Reservations' ? <><label>City / Destination<input value={to} onChange={e=>setTo(e.target.value)} placeholder="Destination" /></label><label>Check-in<input value={date} onChange={e=>setDate(e.target.value)} type="date"/></label><label>Check-out<input type="date"/></label><label>Guests<select value={passengers} onChange={e=>setPassengers(e.target.value)}><option value="">Select</option><option>1 Guest</option><option>2 Guests</option><option>Family</option></select></label></> : tab==='IRCTC Train Reservations' ? <><label>From<input value={from} onChange={e=>setFrom(e.target.value)} placeholder="Hyderabad"/></label><label>To<input value={to} onChange={e=>setTo(e.target.value)} placeholder="Destination"/></label><label>Travel date<input value={date} onChange={e=>setDate(e.target.value)} type="date"/></label><label>Passengers<select value={passengers} onChange={e=>setPassengers(e.target.value)}><option value="">Select</option><option>1 Passenger</option><option>2 Passengers</option><option>Family / Group</option></select></label></> : <><label>From<input value={from} onChange={e=>setFrom(e.target.value)} placeholder="City or airport"/></label><label>To<input value={to} onChange={e=>setTo(e.target.value)} placeholder="Destination"/></label><label>Travel date<input value={date} onChange={e=>setDate(e.target.value)} type="date"/></label><label>Passengers<select value={passengers} onChange={e=>setPassengers(e.target.value)}><option value="">Select</option><option>1 Passenger</option><option>2 Passengers</option><option>Family / Group</option></select></label></>}
-      </div><button className="primary-button booking-submit" onClick={()=>redirectToWhatsApp('Flight, Hotel & Train', { 'Booking type': tab, 'From / City': from, 'To / Destination': to, 'Travel date': date, 'Passengers / Guests': passengers })}>Get your travel quote <ArrowRight size={16}/></button></div></div></section>
-    </>
+function BookingPage() {
+  const [bookingType, setBookingType] = useState<BookingType>('Domestic Flight')
+  const [values, setValues] = useState<Record<string, string>>({})
+  const [bookingError, setBookingError] = useState('')
+  const tabs: { type: BookingType; label: string }[] = [
+    { type: 'Domestic Flight', label: 'Domestic Flights' },
+    { type: 'International Flight', label: 'International Flights' },
+    { type: 'IRCTC Train Reservation', label: 'IRCTC Train Reservations' },
+    { type: 'Hotel Reservation', label: 'Hotel Reservations' },
+  ]
+  const setValue = (key: string, value: string) => {
+    setValues(previous => ({ ...previous, [key]: value }))
+    setBookingError('')
   }
+  const submit = () => {
+    const error = getBookingValidationError(bookingType, values)
+    if (error) {
+      setBookingError(error)
+      return
+    }
+    redirectToWhatsApp(bookingType, getBookingRequestValues(bookingType, values))
+  }
+  return <><PageHero eyebrow="Travel Booking Services from Hyderabad" title="Flight, hotel & train reservations" text="Book domestic and international flights, hotels and train tickets with GOYAD Travel. Practical assistance from enquiry to confirmation." image="plane.jpg" />
+    <section className="section"><div className="container"><div className="booking-module"><div className="booking-tabs">{tabs.map(item=><button className={bookingType===item.type?'active':''} onClick={()=>{setBookingType(item.type);setBookingError('')}} key={item.type}>{item.label}</button>)}</div><div className="booking-form">
+      <BookingFields type={bookingType} values={values} setValue={setValue} variant="page" />
+      {bookingError && <p className="booking-form-error" role="alert">{bookingError}</p>}
+    </div><button className="primary-button booking-submit" onClick={submit}>Get your travel quote <ArrowRight size={16}/></button></div></div></section>
+  </>
+}
 
   function CabPage() {
     const [vehicle,setVehicle]=useState('Sedan')
